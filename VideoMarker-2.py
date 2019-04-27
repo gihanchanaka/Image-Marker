@@ -36,7 +36,7 @@ def mouse_callback(event, x, y, flags, params):
             cv2.line(frame,(clicksXY[i][0],clicksXY[i][1]),(clicksXY[(i+1)%len(clicksXY)][0],clicksXY[(i+1)%len(clicksXY)][1]),[255,255,255],thickness=1)
 
         cv2.imshow("frame",frame)
-    if event==cv2.EVENT_FLAG_ALTKEY:
+    elif event==cv2.EVENT_FLAG_RBUTTON:
         finishGettingInput=True
 
 
@@ -53,7 +53,7 @@ def readFrame(vid):
 def mainFunc(inputFile,outputFile,noFramesMax,randomJump):
 
 
-    global frame,vidIn,vidOut,clicksXY
+    global frame,vidIn,vidOut,clicksXY,finishGettingInput
 
     vidIn=cv2.VideoCapture(inputFile)
 
@@ -87,12 +87,15 @@ def mainFunc(inputFile,outputFile,noFramesMax,randomJump):
 
         X[f]=frameBackup
         Y[f,:,:]=np.array(clicksXY)
+        clicksXY=[]
         f+=1
-        print("Frame {} of {} complete".format(f+1,noFramesMax))
+        print("Frame {} of {} complete".format(f,noFramesMax))
 
     cv2.destroyWindow("frame")
     vidIn.release()
 
+    np.savez(outputFile,X=X,Y=Y)
+    print("File saved to {}".format(outputFile))
 
     for f in range(noFramesMax):
         frame=np.copy(X[f])
@@ -101,11 +104,14 @@ def mainFunc(inputFile,outputFile,noFramesMax,randomJump):
             cv2.circle(frame,(clicksXY[i][0],clicksXY[i][1]),4,[255,255,255],thickness=4)
             cv2.line(frame,(clicksXY[i][0],clicksXY[i][1]),(clicksXY[(i+1)%len(clicksXY)][0],clicksXY[(i+1)%len(clicksXY)][1]),[255,255,255],thickness=1)
 
-
         cv2.imshow("Marked frame",frame)
-        cv2.waitKey(100)
+        cv2.waitKey(1)
+        cv2.imshow("Unmarked frame",X[f])
+        cv2.waitKey(1000)
 
 
+    cv2.destroyAllWindows()
+    print("Program end")
 
 
 
@@ -121,7 +127,7 @@ if __name__ == '__main__':
         noFramesMax=int(sys.argv[3])
         randomJump=int(sys.argv[4])
     except:
-        print("python VideoMarker-2.py ./video/inputVid.mp4 ./dataset/screen.npz 1000")
+        print("python VideoMarker-2.py ./video/inputVid.mp4 ./dataset/screen.npz 1000 10")
     mainFunc(inputFile,outputFile,noFramesMax,randomJump)
 
 
