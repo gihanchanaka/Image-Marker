@@ -22,7 +22,7 @@ def resizedFrame(frame,ratio=RESIZE_RATIO):
 
 def mouse_callback(event, x, y, flags, params):
     global frame,vidIn,vidOut,clicksXY,finishGettingInput
-    if event==1:
+    if event==cv2.EVENT_FLAG_LBUTTON:
 
         clicksXY.append([x,y])
         while len(clicksXY)>4:
@@ -35,8 +35,8 @@ def mouse_callback(event, x, y, flags, params):
             cv2.circle(frame,(clicksXY[i][0],clicksXY[i][1]),4,[255,255,255],thickness=4)
             cv2.line(frame,(clicksXY[i][0],clicksXY[i][1]),(clicksXY[(i+1)%len(clicksXY)][0],clicksXY[(i+1)%len(clicksXY)][1]),[255,255,255],thickness=1)
 
-        cv2.imshow("image",frame)
-    if event==cv2.EVENT_FLAG_RBUTTON:
+        cv2.imshow("frame",frame)
+    if event==cv2.EVENT_FLAG_ALTKEY:
         finishGettingInput=True
 
 
@@ -59,57 +59,59 @@ def mainFunc(inputFile,outputFile,noFramesMax,randomJump):
 
     ret,frame=readFrame(vidIn)
     assert ret , "No frame returned"
+    cv2.imshow("frame",frame)
+    cv2.waitKey(10)
+    cv2.setMouseCallback('frame', mouse_callback)
+
 
     X=np.zeros(shape=(noFramesMax,frame.shape[0],frame.shape[1],frame.shape[2]),dtype=np.uint8)
-    Y=np.zeros((noFramesMax,4),dtype=np.uint32)
+    Y=np.zeros((noFramesMax,4,2),dtype=np.uint32)
 
     f=0
 
     while f<noFramesMax:
-        ret,frame=readFrame(vidIn)
-        if not ret:
-            vidIn.release()
-            vidIn=cv2.VideoCapture(inputFile)
+        jump=np.random.randint(randomJump/2,randomJump)
 
-        
+        for _ in range(jump):
+            ret,frame=readFrame(vidIn)
+            if not ret:
+                vidIn.release()
+                vidIn=cv2.VideoCapture(inputFile)
 
+        frameBackup=np.copy(frame)
+        cv2.imshow("frame",frame)
 
-    while not finishGettingInput:
-        cv2.waitKey(1)
+        finishGettingInput=False
+        while not finishGettingInput:
+            cv2.waitKey(1)
 
-    cv2.destroyWindow("image")
+        X[f]=frameBackup
+        Y[f,:,:]=np.array(clicksXY)
+        f+=1
+        print("Frame {} of {} complete".format(f+1,noFramesMax))
+
+    cv2.destroyWindow("frame")
     vidIn.release()
-    vidIn=cv2.VideoCapture(inputFile)
-
-    destPoints="[[0,0], [298,0], [298,298], [0,298]]"#sys.argv[3]##
-    sourcePoints="[[{},{}], [{},{}], [{},{}], [{},{}]]".format(clicksXY[0][0],clicksXY[0][1],clicksXY[1][0],clicksXY[1][1],clicksXY[2][0],clicksXY[2][1],clicksXY[3][0],clicksXY[3][1])#sys.argv[4]
-
-    sourcePoints=np.array(eval(sourcePoints)).astype(np.float32)
-    destPoints=np.array(eval(destPoints)).astype(np.float32)
-
-    print("Source points shape = {}, dest = {}".format(sourcePoints.shape,destPoints.shape))
-
-    h=cv2.getPerspectiveTransform(sourcePoints,destPoints)
 
 
-    while True:
-        ret,frame=readFrame(vidIn)
-        if not ret:
-            break
-        destFrame = cv2.warpPerspective(frame, h, (299,299))
-        cv2.imshow("Oriented frame",destFrame)
-        vidOut.write(destFrame)
+    for f in range(noFramesMax):
+        frame=np.copy(X[f])
+        clicksXY=Y[f]
         for i in range(len(clicksXY)):
             cv2.circle(frame,(clicksXY[i][0],clicksXY[i][1]),4,[255,255,255],thickness=4)
             cv2.line(frame,(clicksXY[i][0],clicksXY[i][1]),(clicksXY[(i+1)%len(clicksXY)][0],clicksXY[(i+1)%len(clicksXY)][1]),[255,255,255],thickness=1)
-        cv2.imshow("Original frame",frame)
-        cv2.waitKey(1)
+
+
+        cv2.imshow("Marked frame",frame)
+        cv2.waitKey(100)
 
 
 
-    cv2.destroyAllWindows()
-    vidIn.release()
-    vidOut.release()
+
+
+
+
+
 
 
 if __name__ == '__main__':
